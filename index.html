@@ -5,12 +5,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bibliotech | プレミアム読書管理システム</title>
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Bibliotech%22%2C%22short_name%22%3A%22Bibliotech%22%2C%22description%22%3A%22Premium%20Book%20Log%20System%22%2C%22start_url%22%3A%22index.html%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230f172a%22%2C%22theme_color%22%3A%22%233b67f5%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fimg.icons8.com%2Ffluency%2F512%2Fbooks.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D">
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap"
         rel="stylesheet">
+    <!-- iOS support -->
+    <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/512/books.png">
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- React & Tailwind CSS CDN -->
@@ -45,6 +49,16 @@
                     fontFamily: {
                         sans: ['Inter', 'Noto Sans JP', 'sans-serif'],
                         display: ['Outfit', 'sans-serif'],
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        }
                     }
                 }
             }
@@ -53,71 +67,96 @@
     <style>
         @layer base {
             body {
-                @apply font-sans antialiased text-slate-800 bg-slate-50 dark:bg-dark-900 dark:text-slate-100 transition-colors duration-300;
+                font-family: 'Inter', 'Noto Sans JP', sans-serif;
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+                color: #1e293b; /* text-slate-800 */
+                transition: background-color 1000ms, color 1000ms;
+                min-height: 100vh;
                 font-feature-settings: "palt";
             }
         }
 
+        /* Ambient Backgrounds */
+        .ambient-dawn { background: linear-gradient(135deg, #fef2f2 0%, #e0e7ff 100%); }
+        .ambient-day { background: linear-gradient(135deg, #f8fafc 0%, #dbeafe 100%); }
+        .ambient-dusk { background: linear-gradient(135deg, #fff7ed 0%, #ede9fe 100%); }
+        .ambient-night { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); }
+
+        .dark.ambient-night { background: linear-gradient(135deg, #020617 0%, #0f172a 100%); }
+        .dark.ambient-dawn { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); }
+
         .glass {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
         }
 
         .dark .glass {
-            background: rgba(30, 41, 59, 0.7);
+            background: rgba(15, 23, 42, 0.6);
             border: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         .book-card-hover {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
         .book-card-hover:hover {
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            transform: translateY(-12px) scale(1.03);
+            box-shadow: 0 25px 50px -12px rgba(59, 103, 245, 0.25);
         }
 
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
+        .phrase-card {
+            background: linear-gradient(165deg, rgba(255,255,255,0.9) 0%, rgba(248,250,252,0.8) 100%);
+            border-left: 4px solid #3b67f5;
         }
 
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: transparent;
+        .dark .phrase-card {
+            background: linear-gradient(165deg, rgba(30,41,59,0.8) 0%, rgba(15,23,42,0.9) 100%);
         }
 
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            @apply bg-slate-200 dark:bg-slate-700 rounded-full;
+        .canvas-confetti {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 999;
         }
 
-        input[type="range"] {
-            @apply appearance-none bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full;
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { 
+            background-color: #cbd5e1; /* slate-300 */
+            border-radius: 9999px;
+        }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #334155; /* slate-700 */
         }
 
-        input[type="range"]::-webkit-slider-thumb {
-            @apply appearance-none w-4 h-4 bg-premium-500 rounded-full cursor-pointer shadow-lg;
+        input[type="range"] { @apply appearance-none bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full; }
+        input[type="range"]::-webkit-slider-thumb { @apply appearance-none w-5 h-5 bg-premium-500 rounded-full cursor-pointer shadow-xl border-2 border-white; }
+
+        .fade-in { animation: fadeIn 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .progress-ring-circle {
+            transition: stroke-dashoffset 1s ease-in-out;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
         }
 
-        .fade-in {
-            animation: fadeIn 0.5s ease-out;
+        .scanner-line {
+            height: 2px;
+            background: #3b67f5;
+            box-shadow: 0 0 15px #3b67f5;
+            animation: scan 2s linear infinite;
         }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
+        @keyframes scan { 0% { top: 0%; } 100% { top: 100%; } }
     </style>
 </head>
 
-<body class="dark overflow-x-hidden">
+<body class="dark overflow-x-hidden ambient-night">
+    <canvas id="confetti" class="canvas-confetti"></canvas>
     <div id="root"></div>
 
     <script type="text/babel">
@@ -155,7 +194,7 @@
             Search, Book, BookOpen, CheckCircle, Clock, Star,
             Plus, Trash2, Moon, Sun, LayoutGrid, List, BarChart2,
             ChevronRight, ExternalLink, Filter, ArrowLeft, MoreHorizontal,
-            Edit3, Bookmark, Trophy, Zap, MousePointer2
+            Edit3, Bookmark, Trophy, Zap, MousePointer2, X, Sparkles, Quote, Camera
         } = LucideIcons;
 
         // --- Constants ---
@@ -167,6 +206,22 @@
         ];
 
         // --- Helper Components ---
+        const ProgressRing = ({ progress, size = 60, stroke = 5, color = "text-premium-500" }) => {
+            const radius = (size / 2) - (stroke * 2);
+            const circumference = radius * 2 * Math.PI;
+            const offset = circumference - (progress / 100) * circumference;
+
+            return (
+                <div className="relative inline-flex items-center justify-center">
+                    <svg width={size} height={size} className="transform -rotate-90">
+                        <circle className="text-slate-200 dark:text-slate-800" strokeWidth={stroke} stroke="currentColor" fill="transparent" r={radius} cx={size / 2} cy={size / 2} />
+                        <circle className={`${color} transition-all duration-1000 ease-out`} strokeWidth={stroke} strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round" stroke="currentColor" fill="transparent" r={radius} cx={size / 2} cy={size / 2} />
+                    </svg>
+                    <span className="absolute text-[10px] font-black">{Math.round(progress)}%</span>
+                </div>
+            );
+        };
+
         const StatusIcon = ({ status, size = 16, className = "" }) => {
             switch (status) {
                 case 'reading': return <BookOpen size={size} className={className} />;
@@ -180,16 +235,8 @@
             return (
                 <div className="flex gap-0.5">
                     {[1, 2, 3, 4, 5].map(star => (
-                        <button
-                            key={star}
-                            type="button"
-                            onClick={() => !readonly && onChange && onChange(star)}
-                            className={`${readonly ? 'cursor-default' : 'cursor-pointer'} transition-transform active:scale-125`}
-                        >
-                            <Star
-                                size={size}
-                                className={star <= value ? 'fill-amber-400 text-amber-400' : 'text-slate-300 dark:text-slate-600'}
-                            />
+                        <button key={star} type="button" onClick={() => !readonly && onChange && onChange(star)} className={`${readonly ? 'cursor-default' : 'cursor-pointer'} transition-transform active:scale-125`}>
+                            <Star size={size} className={star <= value ? 'fill-amber-400 text-amber-400' : 'text-slate-300 dark:text-slate-600'} />
                         </button>
                     ))}
                 </div>
@@ -198,105 +245,94 @@
 
         // --- Sub-Components (Moved outside App to prevent re-mounting focus loss) ---
 
-        const DashboardView = ({ stats, books, onBookClick }) => (
+        const DashboardView = ({ stats, books, onBookClick, phrases, goals }) => (
             <div className="space-y-8 animate-in fade-in duration-500">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="glass shadow-sm p-6 rounded-3xl group">
-                        <div className="flex items-center gap-4 mb-2">
-                            <div className="p-3 bg-premium-100 dark:bg-premium-900/40 rounded-2xl text-premium-600 dark:text-premium-400 group-hover:scale-110 transition-transform">
-                                <Book size={24} />
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-2 grid grid-cols-2 gap-4">
+                        <div className="glass shadow-sm p-6 rounded-[2rem] group">
+                            <div className="flex items-center gap-4 mb-2">
+                                <div className="p-3 bg-premium-100 dark:bg-premium-900/40 rounded-2xl text-premium-600 dark:text-premium-400 group-hover:scale-110 transition-transform">
+                                    <Book size={24} />
+                                </div>
+                                <span className="text-slate-500 dark:text-slate-400 font-bold text-sm">合計蔵書数</span>
                             </div>
-                            <span className="text-slate-500 dark:text-slate-400 font-medium">合計蔵書数</span>
+                            <div className="text-4xl font-display font-black">{stats.total}<span className="text-xs font-sans font-normal ml-2 opacity-50 uppercase tracking-widest">Books</span></div>
                         </div>
-                        <div className="text-3xl font-display font-bold">{stats.total}<span className="text-sm font-sans font-normal ml-1">冊</span></div>
+                        <div className="glass shadow-sm p-6 rounded-[2rem] group">
+                            <div className="flex items-center gap-4 mb-2">
+                                <div className="p-3 bg-emerald-100 dark:bg-emerald-900/40 rounded-2xl text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
+                                    <Trophy size={24} />
+                                </div>
+                                <span className="text-slate-500 dark:text-slate-400 font-bold text-sm">これまでに読了</span>
+                            </div>
+                            <div className="text-4xl font-display font-black text-emerald-500">{stats.finished}<span className="text-xs font-sans font-normal ml-2 opacity-50 uppercase tracking-widest">Completed</span></div>
+                        </div>
                     </div>
-                    <div className="glass shadow-sm p-6 rounded-3xl group">
-                        <div className="flex items-center gap-4 mb-2">
-                            <div className="p-3 bg-emerald-100 dark:bg-emerald-900/40 rounded-2xl text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
-                                <Trophy size={24} />
+                    <div className="glass shadow-xl p-6 rounded-[2rem] bg-premium-600 text-white relative overflow-hidden group">
+                        <div className="relative z-10 flex flex-col h-full justify-between">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <p className="text-premium-100 text-xs font-black uppercase tracking-[0.2em] mb-1">Annual Goal</p>
+                                    <h4 className="text-2xl font-display font-black">読書目標 2026</h4>
+                                </div>
+                                <ProgressRing progress={(stats.finished / goals.annual) * 100} size={70} stroke={6} color="text-white" />
                             </div>
-                            <span className="text-slate-500 dark:text-slate-400 font-medium">これまでに読了</span>
-                        </div>
-                        <div className="text-3xl font-display font-bold text-emerald-500">{stats.finished}<span className="text-sm font-sans font-normal ml-1">冊</span></div>
-                    </div>
-                    <div className="glass shadow-sm p-6 rounded-3xl group">
-                        <div className="flex items-center gap-4 mb-2">
-                            <div className="p-3 bg-amber-100 dark:bg-amber-900/40 rounded-2xl text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
-                                <BookOpen size={24} />
+                            <div className="mt-4">
+                                <p className="text-3xl font-display font-black">{stats.finished} / {goals.annual}</p>
+                                <p className="text-premium-100/60 text-[10px] font-bold mt-1">年間目標の達成まであと {goals.annual - stats.finished} 冊</p>
                             </div>
-                            <span className="text-slate-500 dark:text-slate-400 font-medium">現在読書中</span>
                         </div>
-                        <div className="text-3xl font-display font-bold text-amber-500">{stats.reading}<span className="text-sm font-sans font-normal ml-1">冊</span></div>
-                    </div>
-                    <div className="glass shadow-sm p-6 rounded-3xl group">
-                        <div className="flex items-center gap-4 mb-2">
-                            <div className="p-3 bg-indigo-100 dark:bg-indigo-900/40 rounded-2xl text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
-                                <Bookmark size={24} />
-                            </div>
-                            <span className="text-slate-500 dark:text-slate-400 font-medium">総読了ページ数</span>
-                        </div>
-                        <div className="text-3xl font-display font-bold text-indigo-500">{stats.totalPages.toLocaleString()}<span className="text-sm font-sans font-normal ml-1">P</span></div>
+                        <Sparkles className="absolute -bottom-4 -right-4 w-32 h-32 opacity-10 group-hover:rotate-12 transition-transform duration-700" />
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                        <h3 className="text-lg font-bold flex items-center gap-2">
-                            <Zap className="text-amber-500" size={20} /> 現在読書中の本
-                        </h3>
-                        <div className="space-y-3">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="space-y-6">
+                        <h3 className="text-xl font-black flex items-center gap-3"><Zap className="text-amber-500" size={24} /> 現在読書中の本</h3>
+                        <div className="space-y-4">
                             {books.filter(b => b.status === 'reading').length > 0 ? (
                                 books.filter(b => b.status === 'reading').map(book => (
-                                    <div key={book.id} onClick={() => onBookClick(book)} className="glass p-4 rounded-2xl flex gap-4 hover:border-premium-400 transition-colors cursor-pointer">
-                                        <img src={book.thumbnail} className="w-16 h-24 object-cover rounded-lg shadow-sm" alt="" />
-                                        <div className="flex-1 min-w-0 flex flex-col justify-between">
-                                            <div>
-                                                <h4 className="font-bold truncate text-slate-800 dark:text-white">{book.title}</h4>
-                                                <p className="text-xs text-slate-500 truncate">{book.authors.join(', ')}</p>
+                                    <div key={book.id} onClick={() => onBookClick(book)} className="glass p-5 rounded-[2rem] flex gap-5 hover:border-premium-500 transition-all cursor-pointer group shadow-sm hover:shadow-xl">
+                                        <div className="relative shrink-0 text-center">
+                                            <img src={book.thumbnail} className="w-20 h-28 object-cover rounded-2xl shadow-lg group-hover:scale-105 transition-transform" alt="" />
+                                            <div className="absolute -right-2 -top-2">
+                                                <ProgressRing progress={book.progress} size={40} stroke={4} />
                                             </div>
-                                            <div className="space-y-1.5">
-                                                <div className="flex justify-between text-[10px] font-bold text-slate-500">
-                                                    <span>進捗率: {book.progress}%</span>
-                                                    <span>{Math.round(book.pages * (book.progress / 100))} / {book.pages}P</span>
-                                                </div>
-                                                <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                                                    <div
-                                                        className="h-full bg-premium-500 transition-all duration-500"
-                                                        style={{ width: `${book.progress}%` }}
-                                                    />
-                                                </div>
+                                        </div>
+                                        <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                            <h4 className="text-lg font-black truncate leading-tight">{book.title}</h4>
+                                            <p className="text-sm text-slate-500 font-medium mb-3">{book.authors.join(', ')}</p>
+                                            <div className="w-full h-2 bg-slate-200/50 dark:bg-slate-800 rounded-full overflow-hidden">
+                                                <div className="h-full bg-gradient-to-r from-premium-500 to-indigo-500 rounded-full transition-all duration-1000" style={{ width: `${book.progress}%` }} />
                                             </div>
                                         </div>
                                     </div>
                                 ))
                             ) : (
-                                <div className="glass p-8 rounded-3xl text-center text-slate-400 border-dashed border-2">
-                                    読書中の本はありません
+                                <div className="glass p-12 rounded-[2.5rem] text-center border-dashed border-2 border-slate-200 dark:border-slate-800">
+                                    <MousePointer2 className="mx-auto text-slate-300 mb-4 animate-bounce" size={40} />
+                                    <p className="text-slate-400 font-bold">読書中の本はありません。新しい本を登録しましょう。</p>
                                 </div>
                             )}
                         </div>
                     </div>
-
-                    <div className="space-y-4">
-                        <h3 className="text-lg font-bold flex items-center gap-2">
-                            <Clock className="text-premium-500" size={20} /> 最近追加した本
-                        </h3>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                            {books.slice(0, 6).map(book => (
-                                <div key={book.id} onClick={() => onBookClick(book)} className="book-card-hover cursor-pointer group">
-                                    <div className="aspect-[2/3] relative rounded-xl overflow-hidden shadow-lg border border-white/10">
-                                        <img src={book.thumbnail} className="w-full h-full object-cover" alt="" />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2 pb-3">
-                                            <div className="text-[10px] font-bold text-white flex items-center gap-1">
-                                                <StatusIcon status={book.status} size={10} /> {STATUS_OPTIONS.find(s => s.id === book.status).label}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="mt-2">
-                                        <h4 className="text-xs font-bold truncate leading-relaxed">{book.title}</h4>
-                                    </div>
-                                </div>
-                            ))}
+                    <div className="space-y-6">
+                        <h3 className="text-xl font-black flex items-center gap-3"><Star className="text-premium-500" size={24} /> 黄金のフレーズ</h3>
+                        <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                           {phrases.length > 0 ? phrases.map((p, i) => (
+                               <div key={i} className="phrase-card p-6 rounded-[2rem] shadow-sm relative group overflow-hidden animate-in slide-in-from-right duration-500" style={{animationDelay: `${i*100}ms`}}>
+                                   <Quote className="absolute top-4 right-4 text-premium-500/10 w-12 h-12" />
+                                   <p className="text-sm font-medium italic leading-relaxed text-slate-700 dark:text-slate-200 mb-3 relative z-10">"{p.text}"</p>
+                                   <div className="flex items-center gap-2">
+                                       <img src={p.bookThumbnail} className="w-6 h-8 rounded shadow-sm object-cover" alt="" />
+                                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider truncate">{p.bookTitle}</span>
+                                   </div>
+                               </div>
+                           )) : (
+                               <div className="glass p-12 rounded-[2.5rem] text-center text-slate-400 border-dashed border-2">
+                                   心に響いた言葉を記録しましょう。
+                               </div>
+                           )}
                         </div>
                     </div>
                 </div>
@@ -304,68 +340,42 @@
         );
 
         const LibraryView = ({ filteredBooks, filterStatus, onFilterChange, onBookClick }) => (
-            <div className="space-y-6 animate-in fade-in duration-500">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div className="flex items-center gap-2 p-1 bg-slate-200/50 dark:bg-slate-800/50 rounded-2xl">
+            <div className="space-y-8 animate-in fade-in duration-500">
+                <div className="flex flex-wrap items-center justify-between gap-6">
+                    <div className="flex items-center gap-3 p-1.5 bg-slate-200/50 dark:bg-slate-800/50 backdrop-blur rounded-[1.5rem] border border-white/10">
                         {STATUS_OPTIONS.map(opt => (
-                            <button
-                                key={opt.id}
-                                onClick={() => onFilterChange(opt.id)}
-                                className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${filterStatus === opt.id
-                                    ? 'bg-white dark:bg-slate-700 shadow-sm text-premium-600 dark:text-white'
-                                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                            >
+                            <button key={opt.id} onClick={() => onFilterChange(opt.id)} className={`px-5 py-2 rounded-xl text-xs font-black transition-all ${filterStatus === opt.id ? 'bg-premium-600 text-white shadow-xl' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}>
                                 {opt.label}
                             </button>
                         ))}
                     </div>
-                    <div className="text-xs font-bold text-slate-400">
-                        全 {filteredBooks.length} 冊
+                    <div className="flex items-center gap-4">
+                       <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Total: {filteredBooks.length}</span>
                     </div>
                 </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-8">
                     {filteredBooks.map(book => (
-                        <div
-                            key={book.id}
-                            onClick={() => onBookClick(book)}
-                            className="group cursor-pointer book-card-hover"
-                        >
-                            <div className="aspect-[2/3] relative rounded-2xl overflow-hidden shadow-xl border-4 border-white dark:border-slate-800 transition-all group-hover:border-premium-500">
+                        <div key={book.id} onClick={() => onBookClick(book)} className="group cursor-pointer book-card-hover">
+                            <div className="aspect-[2/3] relative rounded-[2rem] overflow-hidden shadow-2xl border-4 border-white dark:border-slate-800 transition-all group-hover:border-premium-500">
                                 <img src={book.thumbnail} className="w-full h-full object-cover" alt="" />
-                                {book.status === 'reading' && (
-                                    <div className="absolute top-2 right-2 bg-amber-500 text-white p-1.5 rounded-full shadow-lg">
-                                        <BookOpen size={14} />
-                                    </div>
-                                )}
-                                {book.status === 'finished' && (
-                                    <div className="absolute top-2 right-2 bg-emerald-500 text-white p-1.5 rounded-full shadow-lg">
-                                        <CheckCircle size={14} />
-                                    </div>
-                                )}
-                                <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-200/50">
-                                    <div className="h-full bg-premium-500" style={{ width: `${book.progress}%` }} />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 backdrop-blur-sm">
+                                   <StatusIcon status={book.status} size={32} className="text-white p-2 bg-premium-600/50 rounded-full" />
+                                   <span className="text-white text-[10px] font-black uppercase tracking-wider">{STATUS_OPTIONS.find(s => s.id === book.status).label}</span>
+                                </div>
+                                <div className="absolute bottom-0 left-0 right-0 h-2 bg-black/20">
+                                    <div className="h-full bg-premium-500 shadow-[0_0_10px_#3b67f5]" style={{ width: `${book.progress}%` }} />
                                 </div>
                             </div>
-                            <div className="mt-3 text-center">
-                                <h4 className="font-bold text-sm truncate px-1 dark:text-white">{book.title}</h4>
-                                <p className="text-[10px] text-slate-500 mt-0.5">{book.authors[0]}</p>
-                                <div className="flex justify-center mt-1.5">
+                            <div className="mt-4 text-center">
+                                <h4 className="font-black text-sm truncate px-2 leading-tight">{book.title}</h4>
+                                <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-tighter">{book.authors[0]}</p>
+                                <div className="flex justify-center mt-2 scale-90">
                                     <Rating value={book.rating} size={10} readonly />
                                 </div>
                             </div>
                         </div>
                     ))}
                 </div>
-
-                {filteredBooks.length === 0 && (
-                    <div className="py-20 text-center space-y-4">
-                        <div className="bg-slate-100 dark:bg-slate-800 w-20 h-20 rounded-full flex items-center justify-center mx-auto text-slate-300">
-                            <Book size={40} />
-                        </div>
-                        <p className="text-slate-500 font-medium">該当する本が見つかりませんでした</p>
-                    </div>
-                )}
             </div>
         );
 
@@ -425,123 +435,116 @@
             </div>
         );
 
-        const BookDetailModal = ({ selectedBook, onClose, onUpdate, onDelete }) => {
+        const BookDetailModal = ({ selectedBook, onClose, onUpdate, onDelete, onAddPhrase, onGetAIInsight, aiInsight }) => {
             if (!selectedBook) return null;
             const b = selectedBook;
+            const [phraseText, setPhraseText] = useState('');
+            const [isAISearching, setIsAISearching] = useState(false);
+
+            const handleAnalyze = async () => {
+                setIsAISearching(true);
+                await onGetAIInsight(b);
+                setIsAISearching(false);
+            };
 
             return (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 sm:p-10 animate-in fade-in duration-300">
-                    <div className="absolute inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm" onClick={onClose}></div>
-                    <div className="glass w-full max-w-4xl max-h-full overflow-y-auto rounded-3xl shadow-2xl relative custom-scrollbar animate-in zoom-in duration-300">
-                        <div className="flex flex-col md:flex-row gap-8 p-6 md:p-10 border-b border-slate-100 dark:border-slate-800">
-                            <div className="w-full md:w-64 shrink-0">
-                                <img src={b.thumbnail} className="w-full aspect-[2/3] object-cover rounded-2xl shadow-2xl border-4 border-white dark:border-slate-700" alt="" />
-                                <div className="mt-6 space-y-3">
-                                    <select
-                                        value={b.status}
-                                        onChange={(e) => onUpdate(b.id, {
-                                            status: e.target.value,
-                                            finishedAt: e.target.value === 'finished' ? new Date().toISOString() : null,
-                                            progress: e.target.value === 'finished' ? 100 : b.progress
-                                        })}
-                                        className="w-full bg-slate-100 dark:bg-slate-800 p-3 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-premium-400"
-                                    >
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-10 animate-in fade-in duration-500">
+                    <div className="absolute inset-0 bg-slate-900/40 dark:bg-black/80 backdrop-blur-md" onClick={onClose}></div>
+                    <div className="glass w-full max-w-5xl max-h-full overflow-y-auto rounded-[3rem] shadow-2xl relative custom-scrollbar animate-in zoom-in-95 duration-500">
+                        <div className="flex flex-col md:flex-row gap-10 p-8 md:p-12">
+                            <div className="w-full md:w-80 shrink-0">
+                                <div className="relative group">
+                                    <img src={b.thumbnail} className="w-full aspect-[2/3] object-cover rounded-[2.5rem] shadow-2xl border-8 border-white dark:border-slate-800" alt="" />
+                                    <div className="absolute inset-0 bg-gradient-to-tr from-premium-500/20 to-transparent rounded-[2.5rem]"></div>
+                                </div>
+                                <div className="mt-8 space-y-3">
+                                    <select value={b.status} onChange={(e) => onUpdate(b.id, { status: e.target.value, finishedAt: e.target.value === 'finished' ? new Date().toISOString() : b.finishedAt, progress: e.target.value === 'finished' ? 100 : b.progress })} className="w-full bg-slate-100 dark:bg-slate-800 p-4 rounded-2xl font-black text-sm outline-none focus:ring-4 focus:ring-premium-500/20 appearance-none shadow-sm">
                                         {STATUS_OPTIONS.slice(1).map(opt => (
                                             <option key={opt.id} value={opt.id}>{opt.label}</option>
                                         ))}
                                     </select>
-                                    <button
-                                        onClick={() => onDelete(b.id)}
-                                        className="w-full flex items-center justify-center gap-2 p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-colors text-sm font-bold"
-                                    >
-                                        <Trash2 size={16} /> 削除する
-                                    </button>
+                                    <button onClick={() => onDelete(b.id)} className="w-full flex items-center justify-center gap-2 p-4 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-2xl transition-all text-xs font-black uppercase tracking-widest"><Trash2 size={16} /> 蔵書から削除</button>
                                 </div>
                             </div>
-
-                            <div className="flex-1 space-y-6">
-                                <div className="space-y-2">
-                                    <h2 className="text-2xl md:text-3xl font-display font-black leading-tight dark:text-white">{b.title}</h2>
-                                    <p className="text-lg text-slate-500 font-medium">{b.authors.join(', ')}</p>
+                            <div className="flex-1 space-y-8">
+                                <div className="space-y-3 relative">
+                                    <button onClick={onClose} className="absolute -top-4 -right-4 p-2 bg-slate-100 dark:bg-slate-800 rounded-full hover:rotate-90 transition-transform"><X size={20} /></button>
+                                    <h2 className="text-3xl md:text-5xl font-display font-black leading-tight tracking-tighter dark:text-white">{b.title}</h2>
+                                    <p className="text-xl text-slate-400 font-bold">{b.authors.join(', ')}</p>
                                 </div>
-
-                                <div className="grid grid-cols-3 gap-4">
-                                    <div className="text-center p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl">
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">ページ数</p>
-                                        <p className="font-display font-black text-xl">{b.pages}<span className="text-[10px] ml-1">P</span></p>
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-3xl border border-white/40 dark:border-white/5 text-center">
+                                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Total Pages</p>
+                                        <p className="font-display font-black text-2xl">{b.pages}<span className="text-xs ml-1 opacity-50 font-sans">P</span></p>
                                     </div>
-                                    <div className="text-center p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl">
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">評価</p>
-                                        <div className="flex justify-center"><Rating value={b.rating} size={14} readonly /></div>
+                                    <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-3xl border border-white/40 dark:border-white/5 text-center">
+                                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">My Rating</p>
+                                        <div className="flex justify-center pt-1"><Rating value={b.rating} size={14} readonly /></div>
                                     </div>
-                                    <div className="text-center p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl">
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">読書状況</p>
-                                        <p className="font-bold text-xs flex items-center justify-center gap-1">
-                                            <StatusIcon status={b.status} size={12} className={STATUS_OPTIONS.find(s => s.id === b.status).color} />
-                                            {STATUS_OPTIONS.find(s => s.id === b.status).label}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-4">
-                                    <div className="flex justify-between items-center mb-1">
-                                        <h4 className="text-sm font-bold flex items-center gap-2 saturate-150 text-premium-600 dark:text-premium-400">
-                                            <Zap size={16} /> 読書進捗
-                                        </h4>
-                                        <span className="text-lg font-display font-black">{b.progress}%</span>
-                                    </div>
-                                    <div className="flex items-center gap-4">
-                                        <input
-                                            type="range"
-                                            className="flex-1"
-                                            min="0" max="100"
-                                            value={b.progress}
-                                            onChange={(e) => onUpdate(b.id, {
-                                                progress: parseInt(e.target.value),
-                                                status: parseInt(e.target.value) === 100 ? 'finished' : (parseInt(e.target.value) > 0 ? 'reading' : b.status)
-                                            })}
-                                        />
+                                    <div className="lg:col-span-2 p-4 bg-premium-600 text-white rounded-3xl shadow-lg relative overflow-hidden group">
+                                        <Zap className="absolute right-[-10px] bottom-[-10px] w-16 h-16 opacity-10 group-hover:scale-125 transition-transform" />
+                                        <p className="text-premium-100 text-[10px] font-black uppercase tracking-widest mb-1 relative z-10">Current Progress</p>
+                                        <div className="flex items-end gap-2 relative z-10">
+                                            <span className="font-display font-black text-3xl leading-none">{b.progress}</span><span className="text-sm font-bold opacity-60 pb-1">%</span>
+                                            <input type="range" className="flex-1 h-3 mb-1 accent-white" min="0" max="100" value={b.progress} onChange={(e) => onUpdate(b.id, { progress: parseInt(e.target.value), status: parseInt(e.target.value) === 100 ? 'finished' : (parseInt(e.target.value) > 0 ? 'reading' : b.status) })} />
+                                        </div>
                                     </div>
                                 </div>
-
-                                <div className="space-y-2">
-                                    <h4 className="text-sm font-bold flex items-center gap-2 text-slate-400">
-                                        <Star size={16} /> マイ評価
-                                    </h4>
-                                    <Rating
-                                        value={b.rating}
-                                        size={24}
-                                        onChange={(v) => onUpdate(b.id, { rating: v })}
-                                    />
-                                </div>
-
-                                <div className="space-y-2 pt-2">
-                                    <h4 className="text-sm font-bold flex items-center gap-2 text-slate-400">
-                                        <Edit3 size={16} /> 読書メモ
-                                    </h4>
-                                    <textarea
-                                        className="w-full bg-slate-100 dark:bg-slate-800/40 p-4 rounded-2xl outline-none focus:ring-2 focus:ring-premium-400 min-h-[120px] text-sm resize-none font-medium leading-relaxed"
-                                        placeholder="感銘を受けたフレーズや、あとで見返したい要約をここに..."
-                                        value={b.memo}
-                                        onChange={(e) => onUpdate(b.id, { memo: e.target.value })}
-                                    />
-                                </div>
-
-                                {b.description && (
-                                    <div className="space-y-2 border-t border-slate-100 dark:border-slate-800 pt-6">
-                                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">書籍情報</h4>
-                                        <p className="text-xs text-slate-500 leading-relaxed max-h-32 overflow-y-auto custom-scrollbar">
-                                            {b.description.replace(/<[^>]*>?/gm, '')}
-                                        </p>
+                                <div className="glass p-6 rounded-[2.5rem] bg-indigo-500/5 dark:bg-premium-900/10 border-indigo-500/10 border-2">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h4 className="text-sm font-black flex items-center gap-3 text-indigo-600 dark:text-premium-400 uppercase tracking-widest"><Sparkles size={18} /> AI Insight & Strategy</h4>
+                                        <button onClick={handleAnalyze} disabled={isAISearching} className="text-[10px] font-black bg-indigo-600 text-white px-4 py-2 rounded-full hover:bg-indigo-500 transition-all disabled:opacity-50">{isAISearching ? '分析中...' : '要約 & 次の推薦'}</button>
                                     </div>
-                                )}
+                                    {aiInsight ? (
+                                        <div className="animate-in fade-in slide-in-from-top-2 duration-500 space-y-4">
+                                            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-bold italic">"{aiInsight.summary}"</p>
+                                            <div className="pt-3 border-t border-indigo-500/10">
+                                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2">Next Book Suggestion</p>
+                                                <div className="flex items-start gap-4 p-3 bg-white/50 dark:bg-slate-900/50 rounded-2xl">
+                                                   <Book size={20} className="text-premium-500 shrink-0 mt-1" />
+                                                   <div>
+                                                       <p className="text-xs font-black leading-tight">{aiInsight.nextBook}</p>
+                                                       <p className="text-[10px] text-slate-500 font-medium mt-1">{aiInsight.why}</p>
+                                                   </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p className="text-[10px] font-bold text-slate-400 text-center py-4">AIが本の要約と次に読むべき一冊を導き出します。</p>
+                                    )}
+                                </div>
+                                <div className="space-y-6">
+                                    <div className="space-y-4">
+                                        <h4 className="text-sm font-black flex items-center gap-3 text-slate-400 uppercase tracking-widest"><Star size={18} className="text-amber-500" /> 黄金のフレーズを刻む</h4>
+                                        <div className="flex gap-3">
+                                            <input type="text" placeholder="心に残った一文を入力..." className="flex-1 bg-slate-100 dark:bg-slate-800/60 p-4 rounded-2xl text-sm font-bold outline-none placeholder:text-slate-400" value={phraseText} onChange={(e) => setPhraseText(e.target.value)} />
+                                            <button onClick={() => { if(phraseText.trim()) { onAddPhrase(b.id, phraseText); setPhraseText(''); } }} className="p-4 bg-premium-600 text-white rounded-2xl hover:scale-105 transition-all shadow-lg active:scale-95"><Plus size={20} /></button>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <h4 className="text-sm font-black flex items-center gap-3 text-slate-400 uppercase tracking-widest"><Edit3 size={18} /> 深い考察と読書メモ</h4>
+                                        <textarea className="w-full bg-slate-100 dark:bg-slate-800/40 p-6 rounded-[2rem] outline-none min-h-[160px] text-sm font-bold leading-relaxed resize-none custom-scrollbar" placeholder="感銘を受けたポイント、将来の自分へのメッセージ..." value={b.memo} onChange={(e) => onUpdate(b.id, { memo: e.target.value })} />
+                                    </div>
+                                </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            );
+        };
 
-                        <div className="bg-slate-50 dark:bg-slate-900/40 p-4 px-6 flex justify-between items-center text-[10px] font-bold text-slate-400">
-                            <span>ID: {b.id}</span>
-                            <span>追加日: {new Date(b.addedAt).toLocaleDateString()}</span>
-                        </div>
+        const ScannerSimulator = ({ onComplete, onClose }) => {
+            useEffect(() => { const timer = setTimeout(() => { onComplete(); }, 2500); return () => clearTimeout(timer); }, []);
+            return (
+                <div className="fixed inset-0 z-[200] bg-black flex flex-col items-center justify-center p-8">
+                    <div className="w-full max-w-sm aspect-square border-4 border-premium-500 rounded-3xl relative overflow-hidden bg-slate-900 group">
+                        <div className="absolute inset-0 flex items-center justify-center"><Camera className="w-32 h-32 text-slate-800" /></div>
+                        <div className="absolute top-0 left-0 w-full h-1 scanner-line"></div>
+                        <div className="absolute inset-0 bg-premium-500/10 animate-pulse"></div>
+                    </div>
+                    <div className="mt-12 text-center text-white space-y-4">
+                        <p className="text-xl font-black uppercase tracking-[0.3em] animate-pulse">Scanning ISBN...</p>
+                        <button onClick={onClose} className="mt-8 px-10 py-3 bg-white/10 hover:bg-white/20 rounded-full text-xs font-black transition-all">Cancel</button>
                     </div>
                 </div>
             );
@@ -553,7 +556,7 @@
                 const saved = localStorage.getItem('bibliotech_books');
                 return saved ? JSON.parse(saved) : [];
             });
-            const [activeTab, setActiveTab] = useState('library'); // 'dashboard', 'library', 'search'
+            const [activeTab, setActiveTab] = useState('library');
             const [filterStatus, setFilterStatus] = useState('all');
             const [isDark, setIsDark] = useState(true);
             const [searchQuery, setSearchQuery] = useState('');
@@ -561,24 +564,108 @@
             const [isSearching, setIsSearching] = useState(false);
             const [selectedBook, setSelectedBook] = useState(null);
             const [showDetail, setShowDetail] = useState(false);
+            const [phrases, setPhrases] = useState(() => {
+                const saved = localStorage.getItem('bibliotech_phrases');
+                return saved ? JSON.parse(saved) : [];
+            });
+            const [goals, setGoals] = useState({ annual: 50 });
+            const [aiInsights, setAIInsights] = useState({});
+            const [isScanning, setIsScanning] = useState(false);
 
-            // Persistence
+            // Ambient background controller
             useEffect(() => {
-                localStorage.setItem('bibliotech_books', JSON.stringify(books));
-            }, [books]);
-
-            // Dark Mode toggle
-            useEffect(() => {
-                document.body.classList.toggle('dark', isDark);
+                const updateBackground = () => {
+                    const hour = new Date().getHours();
+                    let cls = 'ambient-day';
+                    if (hour >= 5 && hour < 8) cls = 'ambient-dawn';
+                    else if (hour >= 8 && hour < 17) cls = 'ambient-day';
+                    else if (hour >= 17 && hour < 20) cls = 'ambient-dusk';
+                    else cls = 'ambient-night';
+                    document.body.className = `antialiased text-slate-800 transition-colors duration-1000 min-h-screen overflow-x-hidden ${isDark ? 'dark ' : ''}${cls}`;
+                };
+                updateBackground();
+                const interval = setInterval(updateBackground, 1000 * 60);
+                return () => clearInterval(interval);
             }, [isDark]);
 
-            // Google Books API Search
+            const triggerConfetti = useCallback(() => {
+                const canvas = document.getElementById('confetti');
+                const ctx = canvas.getContext('2d');
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                const pieces = [];
+                const colors = ['#3b67f5', '#7c3aed', '#10b981', '#f59e0b', '#dc2626'];
+                for (let i = 0; i < 150; i++) {
+                    pieces.push({ x: Math.random() * canvas.width, y: -20, size: Math.random() * 8 + 5, color: colors[Math.floor(Math.random() * colors.length)], speed: Math.random() * 5 + 3, rotation: Math.random() * 360, rotateSpeed: Math.random() * 2 - 1 });
+                }
+                const animate = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    let active = false;
+                    pieces.forEach(p => {
+                        p.y += p.speed; p.rotation += p.rotateSpeed;
+                        if (p.y < canvas.height) active = true;
+                        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rotation * Math.PI / 180); ctx.fillStyle = p.color; ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size); ctx.restore();
+                    });
+                    if (active) requestAnimationFrame(animate);
+                };
+                animate();
+            }, []);
+
+            useEffect(() => {
+                localStorage.setItem('bibliotech_books', JSON.stringify(books));
+                localStorage.setItem('bibliotech_phrases', JSON.stringify(phrases));
+            }, [books, phrases]);
+
+            const addBook = (googleBook) => {
+                const info = googleBook.volumeInfo;
+                if (books.some(b => b.id === googleBook.id)) { alert('既にライブラリに追加されています'); return; }
+                const newBook = { id: googleBook.id, title: info.title, authors: info.authors || ['不明'], thumbnail: info.imageLinks?.thumbnail || 'https://via.placeholder.com/150x220?text=No+Cover', pages: info.pageCount || 100, status: 'toread', rating: 0, memo: '', progress: 0, addedAt: new Date().toISOString(), finishedAt: null, description: info.description || '' };
+                setBooks([newBook, ...books]);
+                setActiveTab('library'); setSearchQuery(''); setSearchResults([]);
+            };
+
+            const updateBook = (id, updates) => {
+                const current = books.find(b => b.id === id);
+                if (updates.progress === 100 && current.progress < 100) triggerConfetti();
+                setBooks(books.map(b => b.id === id ? { ...b, ...updates } : b));
+                if (selectedBook?.id === id) setSelectedBook({ ...selectedBook, ...updates });
+            };
+
+            const deleteBook = (id) => {
+                if (!confirm('ライブラリから削除しますか？')) return;
+                setBooks(books.filter(b => b.id !== id));
+                if (selectedBook?.id === id) setShowDetail(false);
+            };
+
+            const addPhrase = (bookId, text) => {
+                const book = books.find(b => b.id === bookId);
+                const newPhrase = { bookId, bookTitle: book.title, bookThumbnail: book.thumbnail, text, addedAt: new Date().toISOString() };
+                setPhrases([newPhrase, ...phrases]);
+            };
+
+            const getAIInsight = async (book) => {
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        const insight = { summary: `${book.title}は深い洞察に満ちた作品です。`, nextBook: "Atomic Habits", why: "習慣化のヒントが得られます。" };
+                        setAIInsights(prev => ({ ...prev, [book.id]: insight }));
+                        resolve(insight);
+                    }, 1500);
+                });
+            };
+
+            const filteredBooks = useMemo(() => {
+                if (filterStatus === 'all') return books;
+                return books.filter(b => b.status === filterStatus);
+            }, [books, filterStatus]);
+
+            const stats = useMemo(() => {
+                return { total: books.length, reading: books.filter(b => b.status === 'reading').length, finished: books.filter(b => b.status === 'finished').length, toRead: books.filter(b => b.status === 'toread').length, totalPages: books.reduce((sum, b) => sum + (b.status === 'finished' ? b.pages : 0), 0) };
+            }, [books]);
+
             const handleSearch = async (e) => {
                 e?.preventDefault();
                 if (!searchQuery.trim()) return;
-
-                setIsSearching(true);
-                setActiveTab('search');
+                setIsSearching(true); setActiveTab('search');
                 try {
                     const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(searchQuery)}&maxResults=20`);
                     const data = await res.json();
@@ -589,61 +676,6 @@
                     setIsSearching(false);
                 }
             };
-
-            const addBook = (googleBook) => {
-                const info = googleBook.volumeInfo;
-                if (books.some(b => b.id === googleBook.id)) {
-                    alert('既にライブラリに追加されています');
-                    return;
-                }
-
-                const newBook = {
-                    id: googleBook.id,
-                    title: info.title,
-                    authors: info.authors || ['不明'],
-                    thumbnail: info.imageLinks?.thumbnail || 'https://via.placeholder.com/150x220?text=No+Cover',
-                    pages: info.pageCount || 0,
-                    status: 'toread',
-                    rating: 0,
-                    memo: '',
-                    progress: 0,
-                    addedAt: new Date().toISOString(),
-                    finishedAt: null,
-                    description: info.description || ''
-                };
-
-                setBooks([newBook, ...books]);
-                setActiveTab('library');
-                setSearchQuery('');
-                setSearchResults([]);
-            };
-
-            const updateBook = (id, updates) => {
-                setBooks(books.map(b => b.id === id ? { ...b, ...updates } : b));
-            };
-
-            const deleteBook = (id) => {
-                if (!confirm('ライブラリから削除しますか？')) return;
-                setBooks(books.filter(b => b.id !== id));
-                if (selectedBook?.id === id) setShowDetail(false);
-            };
-
-            // Filtered Library
-            const filteredBooks = useMemo(() => {
-                if (filterStatus === 'all') return books;
-                return books.filter(b => b.status === filterStatus);
-            }, [books, filterStatus]);
-
-            // Stats
-            const stats = useMemo(() => {
-                return {
-                    total: books.length,
-                    reading: books.filter(b => b.status === 'reading').length,
-                    finished: books.filter(b => b.status === 'finished').length,
-                    toRead: books.filter(b => b.status === 'toread').length,
-                    totalPages: books.reduce((sum, b) => sum + (b.status === 'finished' ? b.pages : 0), 0)
-                };
-            }, [books]);
 
             return (
                 <div className="pb-24 lg:pb-0 lg:pl-64 min-h-screen">
@@ -716,6 +748,13 @@
                                 </p>
                             </div>
                             <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => setIsScanning(true)}
+                                    className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-2xl hover:bg-premium-600 hover:text-white transition-all shadow-sm group"
+                                    title="バーコードスキャン"
+                                >
+                                    <Camera size={20} className="group-hover:scale-110 transition-transform" />
+                                </button>
                                 {activeTab !== 'search' && (
                                     <button
                                         onClick={() => setActiveTab('search')}
@@ -733,6 +772,8 @@
                                     stats={stats}
                                     books={books}
                                     onBookClick={(book) => { setSelectedBook(book); setShowDetail(true); }}
+                                    phrases={phrases}
+                                    goals={goals}
                                 />
                             )}
                             {activeTab === 'library' && (
@@ -762,7 +803,21 @@
                         onClose={() => setShowDetail(false)}
                         onUpdate={updateBook}
                         onDelete={deleteBook}
+                        onAddPhrase={addPhrase}
+                        onGetAIInsight={getAIInsight}
+                        aiInsight={selectedBook ? aiInsights[selectedBook.id] : null}
                     />
+
+                    {isScanning && (
+                        <ScannerSimulator
+                            onComplete={() => {
+                                setIsScanning(false);
+                                setSearchQuery('9784150117054'); // ハヤカワ文庫などのダミーISBN
+                                handleSearch();
+                            }}
+                            onClose={() => setIsScanning(false)}
+                        />
+                    )}
                 </div>
             );
         };
