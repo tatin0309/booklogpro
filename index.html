@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bibliotech | プレミアム読書管理システム</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- React & Tailwind CSS CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        premium: {
+                            50: '#f5f7ff',
+                            100: '#ebf0fe',
+                            200: '#ced9fd',
+                            300: '#b1c2fb',
+                            400: '#7695f8',
+                            500: '#3b67f5',
+                            600: '#355df0',
+                            700: '#2c4ec9',
+                            800: '#233ea0',
+                            900: '#1d3383',
+                        },
+                        dark: {
+                            900: '#0f172a',
+                            800: '#1e293b',
+                            700: '#334155',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans JP', 'sans-serif'],
+                        display: ['Outfit', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @layer base {
+            body {
+                @apply font-sans antialiased text-slate-800 bg-slate-50 dark:bg-dark-900 dark:text-slate-100 transition-colors duration-300;
+                font-feature-settings: "palt";
+            }
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .dark .glass {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .book-card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .book-card-hover:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            @apply bg-slate-200 dark:bg-slate-700 rounded-full;
+        }
+
+        input[type="range"] {
+            @apply appearance-none bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            @apply appearance-none w-4 h-4 bg-premium-500 rounded-full cursor-pointer shadow-lg;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body class="dark overflow-x-hidden">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useCallback } = React;
+
+        // --- Lucide React Wrapper ---
+        // Vanilla LucideのアイコンデータをReactコンポーネントに変換します
+        const LucideIcons = Object.fromEntries(
+            Object.entries(lucide.icons).map(([name, iconData]) => {
+                return [
+                    name,
+                    ({ color = "currentColor", size = 24, className = "", ...props }) => {
+                        return React.createElement("svg", {
+                            xmlns: "http://www.w3.org/2000/svg",
+                            width: size,
+                            height: size,
+                            viewBox: "0 0 24 24",
+                            fill: "none",
+                            stroke: color,
+                            strokeWidth: 2,
+                            strokeLinecap: "round",
+                            strokeLinejoin: "round",
+                            className: className,
+                            ...props,
+                            children: iconData.map(([tag, attrs], i) =>
+                                React.createElement(tag, { ...attrs, key: i })
+                            )
+                        });
+                    }
+                ];
+            })
+        );
+
+        const {
+            Search, Book, BookOpen, CheckCircle, Clock, Star,
+            Plus, Trash2, Moon, Sun, LayoutGrid, List, BarChart2,
+            ChevronRight, ExternalLink, Filter, ArrowLeft, MoreHorizontal,
+            Edit3, Bookmark, Trophy, Zap, MousePointer2
+        } = LucideIcons;
+
+        // --- Constants ---
+        const STATUS_OPTIONS = [
+            { id: 'all', label: 'すべて', icon: 'LayoutGrid' },
+            { id: 'reading', label: '読書中', icon: 'BookOpen', color: 'text-amber-500' },
+            { id: 'toread', label: '読みたい', icon: 'Clock', color: 'text-premium-500' },
+            { id: 'finished', label: '読了', icon: 'CheckCircle', color: 'text-emerald-500' }
+        ];
+
+        // --- Helper Components ---
+        const StatusIcon = ({ status, size = 16, className = "" }) => {
+            switch (status) {
+                case 'reading': return <BookOpen size={size} className={className} />;
+                case 'finished': return <CheckCircle size={size} className={className} />;
+                case 'toread': return <Clock size={size} className={className} />;
+                default: return <Book size={size} className={className} />;
+            }
+        };
+
+        const Rating = ({ value, onChange, size = 16, readonly = false }) => {
+            return (
+                <div className="flex gap-0.5">
+                    {[1, 2, 3, 4, 5].map(star => (
+                        <button
+                            key={star}
+                            type="button"
+                            onClick={() => !readonly && onChange && onChange(star)}
+                            className={`${readonly ? 'cursor-default' : 'cursor-pointer'} transition-transform active:scale-125`}
+                        >
+                            <Star
+                                size={size}
+                                className={star <= value ? 'fill-amber-400 text-amber-400' : 'text-slate-300 dark:text-slate-600'}
+                            />
+                        </button>
+                    ))}
+                </div>
+            );
+        };
+
+        // --- Sub-Components (Moved outside App to prevent re-mounting focus loss) ---
+
+        const DashboardView = ({ stats, books, onBookClick }) => (
+            <div className="space-y-8 animate-in fade-in duration-500">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="glass shadow-sm p-6 rounded-3xl group">
+                        <div className="flex items-center gap-4 mb-2">
+                            <div className="p-3 bg-premium-100 dark:bg-premium-900/40 rounded-2xl text-premium-600 dark:text-premium-400 group-hover:scale-110 transition-transform">
+                                <Book size={24} />
+                            </div>
+                            <span className="text-slate-500 dark:text-slate-400 font-medium">合計蔵書数</span>
+                        </div>
+                        <div className="text-3xl font-display font-bold">{stats.total}<span className="text-sm font-sans font-normal ml-1">冊</span></div>
+                    </div>
+                    <div className="glass shadow-sm p-6 rounded-3xl group">
+                        <div className="flex items-center gap-4 mb-2">
+                            <div className="p-3 bg-emerald-100 dark:bg-emerald-900/40 rounded-2xl text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
+                                <Trophy size={24} />
+                            </div>
+                            <span className="text-slate-500 dark:text-slate-400 font-medium">これまでに読了</span>
+                        </div>
+                        <div className="text-3xl font-display font-bold text-emerald-500">{stats.finished}<span className="text-sm font-sans font-normal ml-1">冊</span></div>
+                    </div>
+                    <div className="glass shadow-sm p-6 rounded-3xl group">
+                        <div className="flex items-center gap-4 mb-2">
+                            <div className="p-3 bg-amber-100 dark:bg-amber-900/40 rounded-2xl text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
+                                <BookOpen size={24} />
+                            </div>
+                            <span className="text-slate-500 dark:text-slate-400 font-medium">現在読書中</span>
+                        </div>
+                        <div className="text-3xl font-display font-bold text-amber-500">{stats.reading}<span className="text-sm font-sans font-normal ml-1">冊</span></div>
+                    </div>
+                    <div className="glass shadow-sm p-6 rounded-3xl group">
+                        <div className="flex items-center gap-4 mb-2">
+                            <div className="p-3 bg-indigo-100 dark:bg-indigo-900/40 rounded-2xl text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
+                                <Bookmark size={24} />
+                            </div>
+                            <span className="text-slate-500 dark:text-slate-400 font-medium">総読了ページ数</span>
+                        </div>
+                        <div className="text-3xl font-display font-bold text-indigo-500">{stats.totalPages.toLocaleString()}<span className="text-sm font-sans font-normal ml-1">P</span></div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                        <h3 className="text-lg font-bold flex items-center gap-2">
+                            <Zap className="text-amber-500" size={20} /> 現在読書中の本
+                        </h3>
+                        <div className="space-y-3">
+                            {books.filter(b => b.status === 'reading').length > 0 ? (
+                                books.filter(b => b.status === 'reading').map(book => (
+                                    <div key={book.id} onClick={() => onBookClick(book)} className="glass p-4 rounded-2xl flex gap-4 hover:border-premium-400 transition-colors cursor-pointer">
+                                        <img src={book.thumbnail} className="w-16 h-24 object-cover rounded-lg shadow-sm" alt="" />
+                                        <div className="flex-1 min-w-0 flex flex-col justify-between">
+                                            <div>
+                                                <h4 className="font-bold truncate text-slate-800 dark:text-white">{book.title}</h4>
+                                                <p className="text-xs text-slate-500 truncate">{book.authors.join(', ')}</p>
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <div className="flex justify-between text-[10px] font-bold text-slate-500">
+                                                    <span>進捗率: {book.progress}%</span>
+                                                    <span>{Math.round(book.pages * (book.progress / 100))} / {book.pages}P</span>
+                                                </div>
+                                                <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-premium-500 transition-all duration-500"
+                                                        style={{ width: `${book.progress}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="glass p-8 rounded-3xl text-center text-slate-400 border-dashed border-2">
+                                    読書中の本はありません
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <h3 className="text-lg font-bold flex items-center gap-2">
+                            <Clock className="text-premium-500" size={20} /> 最近追加した本
+                        </h3>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            {books.slice(0, 6).map(book => (
+                                <div key={book.id} onClick={() => onBookClick(book)} className="book-card-hover cursor-pointer group">
+                                    <div className="aspect-[2/3] relative rounded-xl overflow-hidden shadow-lg border border-white/10">
+                                        <img src={book.thumbnail} className="w-full h-full object-cover" alt="" />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2 pb-3">
+                                            <div className="text-[10px] font-bold text-white flex items-center gap-1">
+                                                <StatusIcon status={book.status} size={10} /> {STATUS_OPTIONS.find(s => s.id === book.status).label}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="mt-2">
+                                        <h4 className="text-xs font-bold truncate leading-relaxed">{book.title}</h4>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+
+        const LibraryView = ({ filteredBooks, filterStatus, onFilterChange, onBookClick }) => (
+            <div className="space-y-6 animate-in fade-in duration-500">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center gap-2 p-1 bg-slate-200/50 dark:bg-slate-800/50 rounded-2xl">
+                        {STATUS_OPTIONS.map(opt => (
+                            <button
+                                key={opt.id}
+                                onClick={() => onFilterChange(opt.id)}
+                                className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${filterStatus === opt.id
+                                    ? 'bg-white dark:bg-slate-700 shadow-sm text-premium-600 dark:text-white'
+                                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                            >
+                                {opt.label}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="text-xs font-bold text-slate-400">
+                        全 {filteredBooks.length} 冊
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                    {filteredBooks.map(book => (
+                        <div
+                            key={book.id}
+                            onClick={() => onBookClick(book)}
+                            className="group cursor-pointer book-card-hover"
+                        >
+                            <div className="aspect-[2/3] relative rounded-2xl overflow-hidden shadow-xl border-4 border-white dark:border-slate-800 transition-all group-hover:border-premium-500">
+                                <img src={book.thumbnail} className="w-full h-full object-cover" alt="" />
+                                {book.status === 'reading' && (
+                                    <div className="absolute top-2 right-2 bg-amber-500 text-white p-1.5 rounded-full shadow-lg">
+                                        <BookOpen size={14} />
+                                    </div>
+                                )}
+                                {book.status === 'finished' && (
+                                    <div className="absolute top-2 right-2 bg-emerald-500 text-white p-1.5 rounded-full shadow-lg">
+                                        <CheckCircle size={14} />
+                                    </div>
+                                )}
+                                <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-200/50">
+                                    <div className="h-full bg-premium-500" style={{ width: `${book.progress}%` }} />
+                                </div>
+                            </div>
+                            <div className="mt-3 text-center">
+                                <h4 className="font-bold text-sm truncate px-1 dark:text-white">{book.title}</h4>
+                                <p className="text-[10px] text-slate-500 mt-0.5">{book.authors[0]}</p>
+                                <div className="flex justify-center mt-1.5">
+                                    <Rating value={book.rating} size={10} readonly />
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {filteredBooks.length === 0 && (
+                    <div className="py-20 text-center space-y-4">
+                        <div className="bg-slate-100 dark:bg-slate-800 w-20 h-20 rounded-full flex items-center justify-center mx-auto text-slate-300">
+                            <Book size={40} />
+                        </div>
+                        <p className="text-slate-500 font-medium">該当する本が見つかりませんでした</p>
+                    </div>
+                )}
+            </div>
+        );
+
+        const SearchView = ({ onSearch, searchQuery, onSearchQueryChange, isSearching, searchResults, onAddBook, books }) => (
+            <div className="space-y-6 animate-in fade-in duration-500">
+                <form onSubmit={onSearch} className="relative group">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-premium-500 transition-colors" size={20} />
+                    <input
+                        type="text"
+                        placeholder="著者名、書籍タイトル、キーワードで検索..."
+                        className="w-full bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 p-4 pl-12 pr-24 rounded-3xl outline-none focus:border-premium-400 focus:ring-4 focus:ring-premium-400/10 transition-all font-medium text-slate-800 dark:text-white"
+                        value={searchQuery}
+                        onChange={(e) => onSearchQueryChange(e.target.value)}
+                    />
+                    <button
+                        type="submit"
+                        className="absolute right-2 top-2 bottom-2 bg-premium-600 hover:bg-premium-500 text-white px-6 rounded-2xl font-bold transition-all active:scale-95"
+                    >
+                        検索
+                    </button>
+                </form>
+
+                {isSearching ? (
+                    <div className="py-20 flex flex-col items-center gap-4 text-slate-400">
+                        <div className="w-12 h-12 border-4 border-premium-500 border-t-transparent rounded-full animate-spin"></div>
+                        <p className="font-medium animate-pulse">データベースを照合中...</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {searchResults.map(item => (
+                            <div key={item.id} className="glass p-4 rounded-3xl flex gap-4 hover:shadow-lg transition-all group">
+                                <img
+                                    src={item.volumeInfo.imageLinks?.thumbnail || 'https://via.placeholder.com/150x220?text=No+Cover'}
+                                    className="w-20 h-28 object-cover rounded-xl shadow-md group-hover:scale-105 transition-transform"
+                                    alt=""
+                                />
+                                <div className="flex-1 min-w-0 flex flex-col justify-between py-1">
+                                    <div>
+                                        <h4 className="font-bold text-sm leading-snug line-clamp-2 dark:text-white">{item.volumeInfo.title}</h4>
+                                        <p className="text-xs text-slate-500 mt-1 truncate">{item.volumeInfo.authors?.join(', ') || '著者不明'}</p>
+                                    </div>
+                                    <button
+                                        onClick={() => onAddBook(item)}
+                                        disabled={books.some(b => b.id === item.id)}
+                                        className={`w-full py-1.5 rounded-xl text-xs font-bold transition-all ${books.some(b => b.id === item.id)
+                                            ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                                            : 'bg-premium-100 dark:bg-premium-900/40 text-premium-600 dark:text-premium-400 hover:bg-premium-600 hover:text-white'
+                                            }`}
+                                    >
+                                        {books.some(b => b.id === item.id) ? '追加済み' : '+ ライブラリに追加'}
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+
+        const BookDetailModal = ({ selectedBook, onClose, onUpdate, onDelete }) => {
+            if (!selectedBook) return null;
+            const b = selectedBook;
+
+            return (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 sm:p-10 animate-in fade-in duration-300">
+                    <div className="absolute inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm" onClick={onClose}></div>
+                    <div className="glass w-full max-w-4xl max-h-full overflow-y-auto rounded-3xl shadow-2xl relative custom-scrollbar animate-in zoom-in duration-300">
+                        <div className="flex flex-col md:flex-row gap-8 p-6 md:p-10 border-b border-slate-100 dark:border-slate-800">
+                            <div className="w-full md:w-64 shrink-0">
+                                <img src={b.thumbnail} className="w-full aspect-[2/3] object-cover rounded-2xl shadow-2xl border-4 border-white dark:border-slate-700" alt="" />
+                                <div className="mt-6 space-y-3">
+                                    <select
+                                        value={b.status}
+                                        onChange={(e) => onUpdate(b.id, {
+                                            status: e.target.value,
+                                            finishedAt: e.target.value === 'finished' ? new Date().toISOString() : null,
+                                            progress: e.target.value === 'finished' ? 100 : b.progress
+                                        })}
+                                        className="w-full bg-slate-100 dark:bg-slate-800 p-3 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-premium-400"
+                                    >
+                                        {STATUS_OPTIONS.slice(1).map(opt => (
+                                            <option key={opt.id} value={opt.id}>{opt.label}</option>
+                                        ))}
+                                    </select>
+                                    <button
+                                        onClick={() => onDelete(b.id)}
+                                        className="w-full flex items-center justify-center gap-2 p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-colors text-sm font-bold"
+                                    >
+                                        <Trash2 size={16} /> 削除する
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="flex-1 space-y-6">
+                                <div className="space-y-2">
+                                    <h2 className="text-2xl md:text-3xl font-display font-black leading-tight dark:text-white">{b.title}</h2>
+                                    <p className="text-lg text-slate-500 font-medium">{b.authors.join(', ')}</p>
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-4">
+                                    <div className="text-center p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl">
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">ページ数</p>
+                                        <p className="font-display font-black text-xl">{b.pages}<span className="text-[10px] ml-1">P</span></p>
+                                    </div>
+                                    <div className="text-center p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl">
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">評価</p>
+                                        <div className="flex justify-center"><Rating value={b.rating} size={14} readonly /></div>
+                                    </div>
+                                    <div className="text-center p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl">
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">読書状況</p>
+                                        <p className="font-bold text-xs flex items-center justify-center gap-1">
+                                            <StatusIcon status={b.status} size={12} className={STATUS_OPTIONS.find(s => s.id === b.status).color} />
+                                            {STATUS_OPTIONS.find(s => s.id === b.status).label}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <h4 className="text-sm font-bold flex items-center gap-2 saturate-150 text-premium-600 dark:text-premium-400">
+                                            <Zap size={16} /> 読書進捗
+                                        </h4>
+                                        <span className="text-lg font-display font-black">{b.progress}%</span>
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        <input
+                                            type="range"
+                                            className="flex-1"
+                                            min="0" max="100"
+                                            value={b.progress}
+                                            onChange={(e) => onUpdate(b.id, {
+                                                progress: parseInt(e.target.value),
+                                                status: parseInt(e.target.value) === 100 ? 'finished' : (parseInt(e.target.value) > 0 ? 'reading' : b.status)
+                                            })}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <h4 className="text-sm font-bold flex items-center gap-2 text-slate-400">
+                                        <Star size={16} /> マイ評価
+                                    </h4>
+                                    <Rating
+                                        value={b.rating}
+                                        size={24}
+                                        onChange={(v) => onUpdate(b.id, { rating: v })}
+                                    />
+                                </div>
+
+                                <div className="space-y-2 pt-2">
+                                    <h4 className="text-sm font-bold flex items-center gap-2 text-slate-400">
+                                        <Edit3 size={16} /> 読書メモ
+                                    </h4>
+                                    <textarea
+                                        className="w-full bg-slate-100 dark:bg-slate-800/40 p-4 rounded-2xl outline-none focus:ring-2 focus:ring-premium-400 min-h-[120px] text-sm resize-none font-medium leading-relaxed"
+                                        placeholder="感銘を受けたフレーズや、あとで見返したい要約をここに..."
+                                        value={b.memo}
+                                        onChange={(e) => onUpdate(b.id, { memo: e.target.value })}
+                                    />
+                                </div>
+
+                                {b.description && (
+                                    <div className="space-y-2 border-t border-slate-100 dark:border-slate-800 pt-6">
+                                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">書籍情報</h4>
+                                        <p className="text-xs text-slate-500 leading-relaxed max-h-32 overflow-y-auto custom-scrollbar">
+                                            {b.description.replace(/<[^>]*>?/gm, '')}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="bg-slate-50 dark:bg-slate-900/40 p-4 px-6 flex justify-between items-center text-[10px] font-bold text-slate-400">
+                            <span>ID: {b.id}</span>
+                            <span>追加日: {new Date(b.addedAt).toLocaleDateString()}</span>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- App Component ---
+        const App = () => {
+            const [books, setBooks] = useState(() => {
+                const saved = localStorage.getItem('bibliotech_books');
+                return saved ? JSON.parse(saved) : [];
+            });
+            const [activeTab, setActiveTab] = useState('library'); // 'dashboard', 'library', 'search'
+            const [filterStatus, setFilterStatus] = useState('all');
+            const [isDark, setIsDark] = useState(true);
+            const [searchQuery, setSearchQuery] = useState('');
+            const [searchResults, setSearchResults] = useState([]);
+            const [isSearching, setIsSearching] = useState(false);
+            const [selectedBook, setSelectedBook] = useState(null);
+            const [showDetail, setShowDetail] = useState(false);
+
+            // Persistence
+            useEffect(() => {
+                localStorage.setItem('bibliotech_books', JSON.stringify(books));
+            }, [books]);
+
+            // Dark Mode toggle
+            useEffect(() => {
+                document.body.classList.toggle('dark', isDark);
+            }, [isDark]);
+
+            // Google Books API Search
+            const handleSearch = async (e) => {
+                e?.preventDefault();
+                if (!searchQuery.trim()) return;
+
+                setIsSearching(true);
+                setActiveTab('search');
+                try {
+                    const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(searchQuery)}&maxResults=20`);
+                    const data = await res.json();
+                    setSearchResults(data.items || []);
+                } catch (err) {
+                    console.error("Search error:", err);
+                } finally {
+                    setIsSearching(false);
+                }
+            };
+
+            const addBook = (googleBook) => {
+                const info = googleBook.volumeInfo;
+                if (books.some(b => b.id === googleBook.id)) {
+                    alert('既にライブラリに追加されています');
+                    return;
+                }
+
+                const newBook = {
+                    id: googleBook.id,
+                    title: info.title,
+                    authors: info.authors || ['不明'],
+                    thumbnail: info.imageLinks?.thumbnail || 'https://via.placeholder.com/150x220?text=No+Cover',
+                    pages: info.pageCount || 0,
+                    status: 'toread',
+                    rating: 0,
+                    memo: '',
+                    progress: 0,
+                    addedAt: new Date().toISOString(),
+                    finishedAt: null,
+                    description: info.description || ''
+                };
+
+                setBooks([newBook, ...books]);
+                setActiveTab('library');
+                setSearchQuery('');
+                setSearchResults([]);
+            };
+
+            const updateBook = (id, updates) => {
+                setBooks(books.map(b => b.id === id ? { ...b, ...updates } : b));
+            };
+
+            const deleteBook = (id) => {
+                if (!confirm('ライブラリから削除しますか？')) return;
+                setBooks(books.filter(b => b.id !== id));
+                if (selectedBook?.id === id) setShowDetail(false);
+            };
+
+            // Filtered Library
+            const filteredBooks = useMemo(() => {
+                if (filterStatus === 'all') return books;
+                return books.filter(b => b.status === filterStatus);
+            }, [books, filterStatus]);
+
+            // Stats
+            const stats = useMemo(() => {
+                return {
+                    total: books.length,
+                    reading: books.filter(b => b.status === 'reading').length,
+                    finished: books.filter(b => b.status === 'finished').length,
+                    toRead: books.filter(b => b.status === 'toread').length,
+                    totalPages: books.reduce((sum, b) => sum + (b.status === 'finished' ? b.pages : 0), 0)
+                };
+            }, [books]);
+
+            return (
+                <div className="pb-24 lg:pb-0 lg:pl-64 min-h-screen">
+                    {/* Sidebar Nav */}
+                    <nav className="fixed bottom-0 left-0 right-0 z-50 lg:top-0 lg:w-64 lg:h-screen glass border-t lg:border-t-0 lg:border-r border-slate-200 dark:border-slate-800 p-2 lg:p-6 flex lg:flex-col justify-between items-center lg:items-stretch">
+                        <div className="hidden lg:flex items-center gap-3 mb-10 px-2 group cursor-default">
+                            <div className="p-2 bg-premium-600 rounded-2xl text-white shadow-lg group-hover:rotate-12 transition-transform duration-500">
+                                <BookOpen size={24} />
+                            </div>
+                            <span className="font-display font-black text-xl tracking-tight dark:text-white">Bibliotech</span>
+                        </div>
+
+                        <div className="flex lg:flex-col gap-2 flex-1 justify-center lg:justify-start w-full px-2 lg:px-0">
+                            <button
+                                onClick={() => setActiveTab('dashboard')}
+                                className={`flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-2xl transition-all duration-300 ${activeTab === 'dashboard'
+                                    ? 'bg-premium-600 text-white shadow-lg shadow-premium-600/20'
+                                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'}`}
+                            >
+                                <BarChart2 size={24} /> <span className="hidden lg:inline font-bold">ダッシュボード</span>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('library')}
+                                className={`flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-2xl transition-all duration-300 ${activeTab === 'library'
+                                    ? 'bg-premium-600 text-white shadow-lg shadow-premium-600/20'
+                                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'}`}
+                            >
+                                <LayoutGrid size={24} /> <span className="hidden lg:inline font-bold">マイライブラリ</span>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('search')}
+                                className={`flex items-center justify-center lg:justify-start gap-4 px-4 py-3 rounded-2xl transition-all duration-300 ${activeTab === 'search'
+                                    ? 'bg-premium-600 text-white shadow-lg shadow-premium-600/20'
+                                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'}`}
+                            >
+                                <Search size={24} /> <span className="hidden lg:inline font-bold">書籍を探す</span>
+                            </button>
+                        </div>
+
+                        <div className="flex lg:flex-col gap-4 items-center">
+                            <button
+                                onClick={() => setIsDark(!isDark)}
+                                className="p-3 text-slate-500 hover:bg-slate-200/50 dark:hover:bg-slate-800 rounded-2xl transition-all"
+                            >
+                                {isDark ? <Sun size={24} /> : <Moon size={24} />}
+                            </button>
+                            <div className="hidden lg:flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800/60 rounded-3xl w-full border border-slate-200/50 dark:border-slate-700/50">
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-premium-400 to-emerald-400 border-2 border-white shadow-sm" />
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-bold truncate">Premium User</p>
+                                    <p className="text-[10px] text-slate-400">Basic Plan</p>
+                                </div>
+                            </div>
+                        </div>
+                    </nav>
+
+                    {/* Main Content */}
+                    <main className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-10">
+                        <header className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
+                            <div>
+                                <h1 className="text-2xl sm:text-3xl font-display font-black tracking-tight dark:text-white">
+                                    {activeTab === 'dashboard' && 'おかえりなさい'}
+                                    {activeTab === 'library' && 'あなたの蔵書'}
+                                    {activeTab === 'search' && '新たな発見'}
+                                </h1>
+                                <p className="text-slate-500 font-medium text-sm mt-1">
+                                    {activeTab === 'dashboard' && '読書データと現在の進捗状況です'}
+                                    {activeTab === 'library' && 'ライブラリ内のすべての本を管理します'}
+                                    {activeTab === 'search' && 'Google Booksの膨大なデータベースから探します'}
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                {activeTab !== 'search' && (
+                                    <button
+                                        onClick={() => setActiveTab('search')}
+                                        className="bg-premium-600 hover:bg-premium-500 text-white px-5 py-2.5 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-premium-600/30 transition-all active:scale-95 text-sm"
+                                    >
+                                        <Plus size={18} /> 新規登録
+                                    </button>
+                                )}
+                            </div>
+                        </header>
+
+                        <div className="relative">
+                            {activeTab === 'dashboard' && (
+                                <DashboardView
+                                    stats={stats}
+                                    books={books}
+                                    onBookClick={(book) => { setSelectedBook(book); setShowDetail(true); }}
+                                />
+                            )}
+                            {activeTab === 'library' && (
+                                <LibraryView
+                                    filteredBooks={filteredBooks}
+                                    filterStatus={filterStatus}
+                                    onFilterChange={setFilterStatus}
+                                    onBookClick={(book) => { setSelectedBook(book); setShowDetail(true); }}
+                                />
+                            )}
+                            {activeTab === 'search' && (
+                                <SearchView
+                                    onSearch={handleSearch}
+                                    searchQuery={searchQuery}
+                                    onSearchQueryChange={setSearchQuery}
+                                    isSearching={isSearching}
+                                    searchResults={searchResults}
+                                    onAddBook={addBook}
+                                    books={books}
+                                />
+                            )}
+                        </div>
+                    </main>
+
+                    <BookDetailModal
+                        selectedBook={showDetail ? selectedBook : null}
+                        onClose={() => setShowDetail(false)}
+                        onUpdate={updateBook}
+                        onDelete={deleteBook}
+                    />
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+
+</html>
