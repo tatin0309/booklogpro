@@ -665,13 +665,27 @@
             const handleSearch = async (e) => {
                 e?.preventDefault();
                 if (!searchQuery.trim()) return;
-                setIsSearching(true); setActiveTab('search');
+                setIsSearching(true); 
+                setActiveTab('search');
+                setSearchResults([]); // Reset results while searching
+                
                 try {
                     const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(searchQuery)}&maxResults=20`);
+                    
+                    if (!res.ok) {
+                        throw new Error(`API response was not ok (${res.status})`);
+                    }
+
                     const data = await res.json();
-                    setSearchResults(data.items || []);
+                    
+                    if (data.items && data.items.length > 0) {
+                        setSearchResults(data.items);
+                    } else {
+                        alert("該当する書籍が見つかりませんでした。");
+                    }
                 } catch (err) {
                     console.error("Search error:", err);
+                    alert("検索中にエラーが発生しました。\nネットワーク接続を確認するか、しばらく経ってからお試しください。");
                 } finally {
                     setIsSearching(false);
                 }
